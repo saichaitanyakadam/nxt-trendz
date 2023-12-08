@@ -3,6 +3,8 @@ import {Link, withRouter} from 'react-router-dom'
 import Cookies from 'js-cookie'
 
 import './index.css'
+import {useContext} from 'react'
+import {AppContext} from '../../context/Appcontext'
 
 const Header = props => {
   const onClickLogout = () => {
@@ -10,6 +12,7 @@ const Header = props => {
     Cookies.remove('jwt_token')
     history.replace('/login')
   }
+  const {cartItems} = useContext(AppContext)
 
   return (
     <nav className="nav-header">
@@ -54,8 +57,11 @@ const Header = props => {
             </li>
 
             <li className="nav-menu-item">
-              <Link to="/cart" className="nav-link">
+              <Link to="/cart" className="nav-link cart-header-container">
                 Cart
+                {cartItems.length > 0 && (
+                  <p className="cart-count-lgscreen">{cartItems.length}</p>
+                )}
               </Link>
             </li>
           </ul>
@@ -90,12 +96,15 @@ const Header = props => {
             </Link>
           </li>
           <li className="nav-menu-item-mobile">
-            <Link to="/cart" className="nav-link">
+            <Link to="/cart" className="nav-link cart-header-container">
               <img
                 src="https://assets.ccbp.in/frontend/react-js/nxt-trendz-cart-icon.png"
                 alt="nav cart"
                 className="nav-bar-image"
               />
+              {cartItems.length > 0 && (
+                <p className="cart-count">{cartItems.length}</p>
+              )}
             </Link>
           </li>
         </ul>

@@ -1,11 +1,11 @@
-import {Component} from 'react'
+import React, {useState, useEffect, useContext} from 'react'
 import {BsPlusSquare, BsDashSquare} from 'react-icons/bs'
-
 import Loader from 'react-loader-spinner'
 import Cookies from 'js-cookie'
 import Header from '../Header'
 import SimilarProductItem from '../SimilarProductItem'
 import './index.css'
+import {AppContext} from '../../context/Appcontext'
 
 const apiStatusConstant = {
   initial: 'INITIAL',
@@ -14,29 +14,22 @@ const apiStatusConstant = {
   success: 'SUCCESS',
 }
 
-class ProductItemDetails extends Component {
-  state = {
-    count: 1,
-    productDetails: {},
-    similarProduct: [],
-    apiStatus: apiStatusConstant.initial,
+const ProductItemDetails = ({match, history}) => {
+  const [count, setCount] = useState(1)
+  const [productDetails, setProductDetails] = useState({})
+  const [similarProduct, setSimilarProduct] = useState([])
+  const [apiStatus, setApiStatus] = useState(apiStatusConstant.initial)
+  const {setCartItems, cartItems} = useContext(AppContext)
+
+  const onDecrement = () => {
+    setCount(prevCount => (prevCount === 1 ? prevCount : prevCount - 1))
   }
 
-  componentDidMount() {
-    this.getProductDetails()
+  const onIncrement = () => {
+    setCount(prevCount => prevCount + 1)
   }
 
-  onDecrement = () => {
-    this.setState(prevState => ({
-      count: prevState.count === 1 ? prevState.count : prevState.count - 1,
-    }))
-  }
-
-  onIncrement = () => {
-    this.setState(prevState => ({count: prevState.count + 1}))
-  }
-
-  formatedData = data => ({
+  const formatedData = data => ({
     imageUrl: data.image_url,
     brand: data.brand,
     description: data.description,
@@ -49,9 +42,8 @@ class ProductItemDetails extends Component {
     totalReviews: data.total_reviews,
   })
 
-  getProductDetails = async () => {
-    this.setState({apiStatus: apiStatusConstant.in_progress})
-    const {match} = this.props
+  const getProductDetails = async () => {
+    setApiStatus(apiStatusConstant.in_progress)
     const {params} = match
     const {id} = params
     const jwtToken = Cookies.get('jwt_token')
@@ -61,38 +53,62 @@ class ProductItemDetails extends Component {
         Authorization: `Bearer ${jwtToken}`,
       },
     }
-    const response = await fetch(`https://apis.ccbp.in/products/${id}`, options)
 
-    if (response.ok) {
-      const data = await response.json()
-      console.log(data)
-      const updatedData = this.formatedData(data)
-      const similarProduct = data.similar_products.map(item =>
-        this.formatedData(item),
+    try {
+      const response = await fetch(
+        `https://apis.ccbp.in/products/${id}`,
+        options,
       )
 
-      this.setState({
-        productDetails: updatedData,
-        similarProduct: [...similarProduct],
-        apiStatus: apiStatusConstant.success,
-      })
-    } else {
-      this.setState({apiStatus: apiStatusConstant.failure})
+      if (response.ok) {
+        const data = await response.json()
+        const updatedData = formatedData(data)
+        const formattedSimilarProduct = data.similar_products.map(item =>
+          formatedData(item),
+        )
+
+        setProductDetails(updatedData)
+        setSimilarProduct([...formattedSimilarProduct])
+        setApiStatus(apiStatusConstant.success)
+      } else {
+        setApiStatus(apiStatusConstant.failure)
+      }
+    } catch (error) {
+      console.error('Error fetching product details:', error)
+      setApiStatus(apiStatusConstant.failure)
     }
   }
 
-  renderLoaderView = () => (
+  useEffect(() => {
+    getProductDetails()
+  }, [])
+
+  const renderLoaderView = () => (
     <div className="products-loader-container" data-testId="loader">
       <Loader type="ThreeDots" color="#0b69ff" height="50" width="50" />
     </div>
   )
 
-  onContinueShoppingClick = () => {
-    const {history} = this.props
+  const onContinueShoppingClick = () => {
     history.replace('/products')
   }
 
-  renderFailureView = () => (
+  const handleCartItems = product => {
+    const isItemPresent = cartItems.find(item => item?.id === product.id)
+    if (!isItemPresent) setCartItems(prev => [...prev, {...product, count}])
+    else {
+      setCartItems(
+        cartItems.map(item => {
+          if (product.id === isItemPresent.id) {
+            return {...product, count: isItemPresent.count + count}
+          }
+          return item
+        }),
+      )
+    }
+  }
+
+  const renderFailureView = () => (
     <div>
       <img
         src="https://assets.ccbp.in/frontend/react-js/nxt-trendz-error-view-img.png"
@@ -100,14 +116,13 @@ class ProductItemDetails extends Component {
         className="error-image"
       />
       <h1>Product Not Found</h1>
-      <button type="button" onClick={this.onContinueShoppingClick}>
+      <button type="button" onClick={onContinueShoppingClick}>
         Continue Shopping
       </button>
     </div>
   )
 
-  renderSuccessView = () => {
-    const {productDetails, count, similarProduct} = this.state
+  const renderSuccessView = () => {
     const {
       imageUrl,
       title,
@@ -117,7 +132,9 @@ class ProductItemDetails extends Component {
       description,
       availability,
       brand,
+      id,
     } = productDetails
+
     return (
       <div className="product-details-main-container">
         <div className="product-details-container">
@@ -144,7 +161,7 @@ class ProductItemDetails extends Component {
               <button
                 className="add-btn"
                 type="button"
-                onClick={this.onDecrement}
+                onClick={onDecrement}
                 data-testId="minus"
               >
                 <BsDashSquare />
@@ -153,13 +170,19 @@ class ProductItemDetails extends Component {
               <button
                 type="button"
                 className="add-btn"
-                onClick={this.onIncrement}
+                onClick={onIncrement}
                 data-testId="plus"
               >
                 <BsPlusSquare />
               </button>
             </div>
-            <button type="button" className="add-to-cart-btn">
+            <button
+              type="button"
+              className="add-to-cart-btn"
+              onClick={() => {
+                handleCartItems(productDetails)
+              }}
+            >
               ADD TO CART
             </button>
           </div>
@@ -176,29 +199,25 @@ class ProductItemDetails extends Component {
     )
   }
 
-  getAllApiConditions = () => {
-    const {apiStatus} = this.state
+  const getAllApiConditions = () => {
     switch (apiStatus) {
       case apiStatusConstant.success:
-        return this.renderSuccessView()
+        return renderSuccessView()
       case apiStatusConstant.failure:
-        return this.renderFailureView()
+        return renderFailureView()
       case apiStatusConstant.in_progress:
-        return this.renderLoaderView()
-
+        return renderLoaderView()
       default:
         return null
     }
   }
 
-  render() {
-    return (
-      <>
-        <Header />
-        {this.getAllApiConditions()}
-      </>
-    )
-  }
+  return (
+    <>
+      <Header />
+      {getAllApiConditions()}
+    </>
+  )
 }
 
 export default ProductItemDetails
