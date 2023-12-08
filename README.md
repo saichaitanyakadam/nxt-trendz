@@ -10,7 +10,7 @@
 
 ### Application
 
-<a href="https://nxtTrendskadam.ccbp.tech">website</a>
+<a href="https://nxtTrendskadam.ccbp.tech" target="_blank">website</a>
 
 ### Credentials for application
 
