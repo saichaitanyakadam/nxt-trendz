@@ -1,0 +1,19 @@
+/* Write your CSS here */
+li {
+  width: 20%;
+}
+.product-image {
+  width: 100%;
+}
+.price-container {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  justify-content: space-between;
+}
+@media (max-width: 780px) {
+  li {
+    width: 40%;
+    margin-right: 0px;
+  }
+}
